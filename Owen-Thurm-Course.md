@@ -43,4 +43,10 @@ Pay attention to safe transfers as they expose callbacks for reentrancy
 
 # Principles of smart contract testing
 
+## Unit Tests
+Catch bugs early on
 
+## Integration Tests
+Catch bugs at the composability layer
+
+https://youtu.be/DRZogmD647U?t=7745

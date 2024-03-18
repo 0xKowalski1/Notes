@@ -16,3 +16,5 @@ Audit ~= Security Review, security review is a better term
 - Do you use the best automated tools to discover security issues in your code?
 - Do you undergo external audits and maintain a vulnerability disclosure or bug bounty program?
 - Have you considered and mitigated avenues for abusing users of your system?
+
+
