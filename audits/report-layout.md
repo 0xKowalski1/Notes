@@ -1,4 +1,4 @@
-# NAME OF PROTOCOL Report
+# NAME OF PROTOCOL Security Review
 
 ## Report by 0xKowalski
 
@@ -59,7 +59,9 @@ Additionally, informational findings may be noted in this report to shed light o
 
 ### Scope
 
-
+| Files               | nSloc |
+|---------------------|-------|
+| `File1.sol`         |       |
 
 ### Issues found
 
