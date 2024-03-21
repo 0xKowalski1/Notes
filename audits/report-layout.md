@@ -29,7 +29,7 @@ You can find me at:
 
 ### Disclaimer
 
-I have made all effort to find as many vulnerabilities in the code in the given time period, but holds no responsibilities for the findings provided in this document. A security audit is not an endorsement of the underlying business or product. The audit was time-boxed and the review of the code was solely on the security aspects of the Solidity implementation of the contracts.
+I have exerted every effort to identify as many vulnerabilities as possible within the allocated time period. However, I do not bear responsibility for the findings detailed in this document. It's important to note that a security audit does not serve as an endorsement of the underlying protocol. This audit was conducted within a specific timeframe, and the review focused exclusively on the security features of the Solidity implementation of the contracts.
 
 ## Risk Classification
 
