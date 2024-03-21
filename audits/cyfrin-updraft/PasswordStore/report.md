@@ -15,7 +15,7 @@
     - [Scope](#scope)
     - [Issues Found](#issues-found)
 - [Findings](#findings)
-    - [H-1 Secret `s_password` is stored on chain and visible to anyone](#h-1-secret-s_password-is-stored-on-chain-and-visible-to-anyone)
+    - [[H-1] Secret `s_password` is stored on chain and visible to anyone](#h-1-secret-s_password-is-stored-on-chain-and-visible-to-anyone)
     - [[H-2] `setPassword()` has no access control, allowing non-owner to set the password](#h-2-setpassword-has-no-access-control-allowing-non-owner-to-set-the-password)
     - [[I-1] The `getPassword()` natspec includes an incorrect parameter](#i-1-the-getpassword-natspec-includes-an-incorrect-parameter)
 
