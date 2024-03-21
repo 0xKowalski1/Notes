@@ -23,7 +23,6 @@
 I am 0xKowalski, a specialized Web3 security researcher with a focus on identifying and mitigating vulnerabilities in decentralized applications. With extensive experience in blockchain technology, my work encompasses the analysis of smart contracts, protocols, and DeFi platforms to enhance their security posture. My professional commitment is to safeguard the Web3 ecosystem, ensuring its integrity and reliability for users and stakeholders.
 
 You can find me at:
-- [Blog](https://blog.0xkowalski.com)
 - [X](https://x.com/0xKowalski_)
 - [Github](https://github.com/0xKowalski1)
 
