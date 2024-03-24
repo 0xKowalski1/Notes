@@ -20,7 +20,7 @@ const filePath = `file://${process.cwd()}/report.html`; // Use the current worki
     const headerTemplate = `
         <div style="font-size:14px; width:100%; padding: 5px 100px; color: #555; margin: 10px; border-bottom: 2px solid #000;">
             <span style="float:left;">${title}</span>
-            <span style="float:right;">${author}</span>
+            <span style="float:right;">By ${author}</span>
         </div>
         <div style="clear: both;"></div>
     `;
