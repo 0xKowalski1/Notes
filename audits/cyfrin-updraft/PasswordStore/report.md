@@ -1,24 +1,8 @@
-# PasswordStore Security Review
-
-## Report by 0xKowalski
-
-## Table of Contents
-
-- [Introduction](#introduction)
-    - [About 0xKowalski](#about-0xkowalski)
-    - [Disclaimer](#disclaimer)
-- [Risk Classification](#risk-classification)
-    - [Overview](#overview)
-    - [Severity Levels](#severity-levels)
-- [Protocol Summary](#protocol-summary)
-    - [Overview](#overview-1)
-    - [Scope](#scope)
-    - [Issues Found](#issues-found)
-- [Findings](#findings)
-    - [[H-1] Secret `s_password` is stored on chain and visible to anyone](#h-1-secret-s_password-is-stored-on-chain-and-visible-to-anyone)
-    - [[H-2] `setPassword()` has no access control, allowing non-owner to set the password](#h-2-setpassword-has-no-access-control-allowing-non-owner-to-set-the-password)
-    - [[I-1] The `getPassword()` natspec includes an incorrect parameter](#i-1-the-getpassword-natspec-includes-an-incorrect-parameter)
-
+---
+title: "PasswordStore Security Review"
+author: "0xKowalski"
+date: "2024-03-24"
+---
 
 ## Introduction
 

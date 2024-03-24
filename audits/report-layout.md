@@ -1,20 +1,8 @@
-# NAME OF PROTOCOL Security Review
-
-## Report by 0xKowalski
-
-## Table of Contents
-
-- [Introduction](#introduction)
-    - [About 0xKowalski](#about-0xkowalski)
-    - [Disclaimer](#disclaimer)
-- [Risk Classification](#risk-classification)
-    - [Overview](#overview)
-    - [Severity Levels](#severity-levels)
-- [Protocol Summary](#protocol-summary)
-    - [Overview](#overview-1)
-    - [Scope](#scope)
-    - [Issues Found](#issues-found)
-- [Findings](#findings)
+---
+title: "PROTOCOL NAME HERE Security Review"
+author: "0xKowalski"
+date: "DATE-HERE"
+---
 
 ## Introduction
 
