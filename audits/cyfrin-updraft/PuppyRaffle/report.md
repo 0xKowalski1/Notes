@@ -1,20 +1,8 @@
-# Puppy Raffle Security Review
-
-## Report by 0xKowalski
-
-## Table of Contents
-
-- [Introduction](#introduction)
-    - [About 0xKowalski](#about-0xkowalski)
-    - [Disclaimer](#disclaimer)
-- [Risk Classification](#risk-classification)
-    - [Overview](#overview)
-    - [Severity Levels](#severity-levels)
-- [Protocol Summary](#protocol-summary)
-    - [Overview](#overview-1)
-    - [Scope](#scope)
-    - [Issues Found](#issues-found)
-- [Findings](#findings)
+---
+title: PuppyRaffle Security Review
+author: 0xKowalski
+date: 2024-03-24
+---
 
 ## Introduction
 
@@ -81,3 +69,5 @@ Puppy Raffle is a on chain raffle where users can pay a fee to join a raffle wit
 ### Low Severity Findings
 
 ### Informational Findings
+
+### Gas Optimization Findings

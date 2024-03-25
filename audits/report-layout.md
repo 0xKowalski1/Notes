@@ -69,3 +69,5 @@ Additionally, informational findings may be noted in this report to shed light o
 ### Low Severity Findings
 
 ### Informational Findings
+
+### Gas Optimization Findings
