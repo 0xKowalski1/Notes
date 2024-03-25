@@ -37,7 +37,7 @@ The severity of a finding is determined by assessing its impact and likelihood:
 
 The combination of impact and likelihood helps in assigning a precise severity level to each finding, ensuring that the most serious vulnerabilities are prioritized and addressed swiftly to maintain the integrity and security of the system.
 
-Additionally, informational findings may be noted in this report to shed light on non-critical issues or good practices. They offer context and detail that can help improve system understanding and security posture, even though they don't represent immediate threats.
+Informational findings may also be noted in this report to shed light on non-critical issues or good practices. They offer context and detail that can help improve system understanding and security posture, even though they don't represent immediate threats.
 
 ## Protocol Summary
 
@@ -59,6 +59,7 @@ Additionally, informational findings may be noted in this report to shed light o
 | Medium          |                    |
 | Low             |                    |
 | Informational   |                    |
+| Gas             |                    |
 
 ## Findings
 

