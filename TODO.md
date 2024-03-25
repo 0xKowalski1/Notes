@@ -1,6 +1,6 @@
 Complete Cyfrin Updraft: 
     - PasswordStore: ✓
-    - PuppyRaffle: 
+    - PuppyRaffle: ✓
     - TSwap:
     - ThunderLoan:
     - Boss Bridge: 
